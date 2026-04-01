@@ -90,7 +90,7 @@ public class MainActivity extends AppCompatActivity {
     private void setupCookies() {
         CookieManager cm = CookieManager.getInstance();
         cm.setAcceptCookie(true);
-        cm.setAcceptThirdPartyCookie(webView, true);
+        cm.setAcceptThirdPartyCookies(webView, true);
     }
 
     // ── Immersive Mode ─────────────────────────────────────────────────
