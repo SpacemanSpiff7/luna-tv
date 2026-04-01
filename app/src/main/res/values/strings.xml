@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Luna TV</string>
+    <string name="error_message">Unable to connect. Check your internet connection.</string>
+    <string name="retry">Retry</string>
+</resources>
