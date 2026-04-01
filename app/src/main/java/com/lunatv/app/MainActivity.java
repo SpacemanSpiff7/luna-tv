@@ -86,10 +86,11 @@ public class MainActivity extends AppCompatActivity {
         webView.requestFocus();
     }
 
+    @SuppressWarnings("deprecation")
     private void setupCookies() {
-        CookieManager cookieManager = CookieManager.getInstance();
-        cookieManager.setAcceptCookie(true);
-        cookieManager.setAcceptThirdPartyCookie(webView, true);
+        CookieManager cm = CookieManager.getInstance();
+        cm.setAcceptCookie(true);
+        cm.setAcceptThirdPartyCookie(webView, true);
     }
 
     // ── Immersive Mode ─────────────────────────────────────────────────
