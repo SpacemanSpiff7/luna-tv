@@ -87,6 +87,8 @@ public class MainActivity extends AppCompatActivity {
         settings.setDatabaseEnabled(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        settings.setOffscreenPreRaster(true);
         settings.setUserAgentString(DESKTOP_UA);
 
         // Remove X-Requested-With header (WebView detection vector)
@@ -95,6 +97,13 @@ public class MainActivity extends AppCompatActivity {
                     settings, Collections.emptySet());
         }
 
+        // Disable safe browsing URL checks (adds latency to every navigation)
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.SAFE_BROWSING_ENABLE)) {
+            WebSettingsCompat.setSafeBrowsingEnabled(settings, false);
+        }
+
+        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        webView.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false);
         webView.setWebViewClient(new LunaWebViewClient());
         webView.setWebChromeClient(new LunaWebChromeClient());
         webView.requestFocus();
