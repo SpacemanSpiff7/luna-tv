@@ -1,24 +1,26 @@
 # Luna TV
 
-Play Amazon Luna cloud games on your Android TV (Sony Bravia, etc.) with an Xbox controller.
+Play Amazon Luna cloud games on your Android TV with an Xbox controller.
 
 Amazon Luna works great in Chrome on Android but has no Android TV app. The Fire TV APK doesn't work on non-Amazon devices. Luna TV is a thin WebView wrapper that loads luna.amazon.com in fullscreen, presenting itself as a desktop Chrome browser so Luna serves the full desktop experience.
 
+Tested on a Sony Bravia running Android TV 9.
+
 ## Requirements
 
-- Android TV device (Sony Bravia, Nvidia Shield, etc.) running Android 9 (API 28) or later
+- Android TV device running Android 9 (API 28) or later
 - Xbox controller paired via Bluetooth
 - Amazon Luna subscription
 - Good internet connection (15+ Mbps recommended; use ethernet if possible)
 
 ## Install
 
-### From APK
+### From Release
 
-1. Download the latest APK from [GitHub Actions](../../actions) (click the latest successful build, then download the `luna-tv-debug` artifact)
+1. Download the latest APK from [Releases](../../releases/latest)
 2. Transfer to your TV via USB drive, or install directly with ADB:
    ```bash
-   adb install luna-tv-debug.apk
+   adb install luna-tv-1.0.0-debug.apk
    ```
 3. The app appears in your TV launcher. If using a sideload manager, it appears there too.
 
@@ -30,7 +32,7 @@ cd luna-tv
 ./gradlew assembleDebug
 ```
 
-Requires JDK 17 and Android SDK platform 34. The APK is at `app/build/outputs/apk/debug/app-debug.apk`.
+Requires JDK 17 and Android SDK platform 34. The APK is at `app/build/outputs/apk/debug/luna-tv-1.0.0-debug.apk`.
 
 ## First-Time Setup
 
@@ -60,6 +62,7 @@ The **Back button** (or Xbox B button) exits fullscreen first, then navigates ba
 | Games won't start / black screen | Ensure your WebView supports Widevine DRM (`chrome://flags` in the TV's Chrome browser) |
 | Controller not working | Pair the controller *before* launching the app. The Gamepad API requires the page to detect the controller on load |
 | Laggy gameplay | Use wired ethernet instead of WiFi. Luna needs consistent low latency |
+| Content cropped at edges | Check TV display settings for "overscan" or "display area" and set to "Full pixel" or disable overscan |
 | App doesn't appear in TV launcher | Check that your TV launcher supports the leanback category. Use a sideload manager as a fallback |
 
 ## License

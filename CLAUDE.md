@@ -8,7 +8,7 @@ Android TV WebView wrapper for Amazon Luna cloud gaming. Targets Sony Bravia TVs
 ./gradlew assembleDebug
 ```
 
-CI runs on GitHub Actions — push to `main` triggers build + APK artifact upload.
+CI runs on GitHub Actions — push to `main` triggers build + APK artifact upload + GitHub Release.
 
 No local Android SDK required; CI handles everything. If building locally, you need JDK 17 + Android SDK platform 34.
 
@@ -25,6 +25,7 @@ Single Activity (`MainActivity.java`), single layout. ~250 lines of Java. No fra
 - **HTML5 fullscreen**: WebView ignores fullscreen requests by default; `onShowCustomView`/`onHideCustomView` swap views
 - **Dual immersive mode**: `WindowInsetsController` (API 30+) and legacy flags (API 28-29)
 - **Back = Xbox B**: exit fullscreen → goBack() → exit app
+- **Fullscreen API spoof**: JS injection makes Luna think page is already fullscreen
 
 ### Gamepad
 
@@ -50,3 +51,7 @@ app/src/main/
 - `androidx.leanback:leanback:1.0.0`
 
 compileSdk 34, minSdk 28, targetSdk 34. Java 11 source. AGP 8.2.2, Gradle 8.4.
+
+## Tested On
+
+Sony Bravia, Android TV 9, Xbox controller over Bluetooth.
