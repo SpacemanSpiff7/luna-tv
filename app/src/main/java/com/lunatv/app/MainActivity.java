@@ -73,6 +73,9 @@ public class MainActivity extends AppCompatActivity {
         settings.setDatabaseEnabled(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+        settings.setLoadWithOverviewMode(true);
+        settings.setUseWideViewPort(true);
+        settings.setInitialScale(0);
         settings.setUserAgentString(DESKTOP_UA);
 
         // Remove X-Requested-With header (WebView detection vector)
