@@ -10,8 +10,8 @@ android {
         applicationId "com.lunatv.app"
         minSdk 28
         targetSdk 34
-        versionCode 1
-        versionName "1.0.0"
+        versionCode project.hasProperty('buildNumber') ? project.buildNumber.toInteger() : 1
+        versionName project.hasProperty('buildNumber') ? "1.0.${project.buildNumber}" : "1.0.0"
     }
 
     buildTypes {
@@ -22,7 +22,7 @@ android {
 
     applicationVariants.all { variant ->
         variant.outputs.all {
-            outputFileName = "luna-tv-${variant.versionName}-${variant.buildType.name}.apk"
+            outputFileName = "luna-tv-${variant.versionName}.apk"
         }
     }
 

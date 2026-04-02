@@ -20,7 +20,7 @@ Tested on a Sony Bravia running Android TV 9.
 1. Download the latest APK from [Releases](../../releases/latest)
 2. Transfer to your TV via USB drive, or install directly with ADB:
    ```bash
-   adb install luna-tv-1.0.0-debug.apk
+   adb install luna-tv-1.0.X.apk
    ```
 3. The app appears in your TV launcher. If using a sideload manager, it appears there too.
 
@@ -32,7 +32,7 @@ cd luna-tv
 ./gradlew assembleDebug
 ```
 
-Requires JDK 17 and Android SDK platform 34. The APK is at `app/build/outputs/apk/debug/luna-tv-1.0.0-debug.apk`.
+Requires JDK 17 and Android SDK platform 34. The APK is at `app/build/outputs/apk/debug/luna-tv-1.0.X.apk`.
 
 ## First-Time Setup
 

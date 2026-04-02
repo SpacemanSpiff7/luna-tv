@@ -24,7 +24,7 @@ jobs:
       - uses: android-actions/setup-android@v3
 
       - name: Build debug APK
-        run: chmod +x gradlew && ./gradlew assembleDebug
+        run: chmod +x gradlew && ./gradlew assembleDebug -PbuildNumber=${{ github.run_number }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
