@@ -34,6 +34,20 @@ public class MainActivity extends AppCompatActivity {
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
                     + "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
+    // Spoof the HTML5 Fullscreen API so Luna thinks we're already fullscreen.
+    // Without this, Luna prompts the user to "go fullscreen" on every page load.
+    private static final String FULLSCREEN_SPOOF_JS =
+            "Object.defineProperty(document,'fullscreenElement',"
+                    + "{get:function(){return document.documentElement;}});"
+                    + "Object.defineProperty(document,'webkitFullscreenElement',"
+                    + "{get:function(){return document.documentElement;}});"
+                    + "Object.defineProperty(document,'webkitIsFullScreen',"
+                    + "{get:function(){return true;}});"
+                    + "Document.prototype.exitFullscreen=function(){return Promise.resolve();};"
+                    + "Document.prototype.webkitExitFullscreen=function(){};"
+                    + "Element.prototype.requestFullscreen=function(){return Promise.resolve();};"
+                    + "Element.prototype.webkitRequestFullscreen=function(){};";
+
     private WebView webView;
     private FrameLayout rootLayout;
     private LinearLayout errorOverlay;
@@ -73,8 +87,6 @@ public class MainActivity extends AppCompatActivity {
         settings.setDatabaseEnabled(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
-        settings.setLoadWithOverviewMode(true);
-        settings.setUseWideViewPort(true);
         settings.setUserAgentString(DESKTOP_UA);
 
         // Remove X-Requested-With header (WebView detection vector)
@@ -83,7 +95,6 @@ public class MainActivity extends AppCompatActivity {
                     settings, Collections.emptySet());
         }
 
-        webView.setInitialScale(0);
         webView.setWebViewClient(new LunaWebViewClient());
         webView.setWebChromeClient(new LunaWebChromeClient());
         webView.requestFocus();
@@ -192,6 +203,7 @@ public class MainActivity extends AppCompatActivity {
         public void onPageFinished(WebView view, String url) {
             errorOverlay.setVisibility(View.GONE);
             webView.setVisibility(View.VISIBLE);
+            view.evaluateJavascript(FULLSCREEN_SPOOF_JS, null);
         }
 
         @Override
