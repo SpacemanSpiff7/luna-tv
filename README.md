@@ -34,6 +34,23 @@ cd luna-tv
 
 Requires JDK 17 and Android SDK platform 34. The APK is at `app/build/outputs/apk/debug/luna-tv-1.0.X.apk`.
 
+### Release signing
+
+CI signs every build with a debug keystore restored from the `DEBUG_KEYSTORE_B64` repository secret. Without it, each run generates a throwaway key, every release gets a different signature, and installing an update over an existing install fails with "App not installed".
+
+To (re)create the secret:
+
+```bash
+keytool -genkeypair -v -keystore debug.keystore \
+  -storetype jks -storepass android -keypass android \
+  -alias AndroidDebugKey -keyalg RSA -keysize 2048 -validity 10950 \
+  -dname "CN=Android Debug,O=Android,C=US"
+
+base64 -i debug.keystore | gh secret set DEBUG_KEYSTORE_B64 -R SpacemanSpiff7/luna-tv
+```
+
+Keep `debug.keystore` somewhere safe (do **not** commit it). If the key is ever lost or rotated, users must uninstall and reinstall once, since signatures won't match.
+
 ## First-Time Setup
 
 1. **Pair your Xbox controller** to the TV via Bluetooth *before* launching the app
@@ -52,6 +69,24 @@ The app loads luna.amazon.com in a fullscreen WebView with:
 - W3C Gamepad API (Xbox controller works natively over HTTPS in WebView)
 
 The **Back button** (or Xbox B button) exits fullscreen first, then navigates back through Luna's pages, then exits the app. You won't accidentally close the app mid-game.
+
+## Settings
+
+Open the settings dialog with the **Menu key** on your TV remote, or by **holding Back / Xbox B** for about a second (outside of fullscreen video). From there you can:
+
+- **Display mode** — switch the user-agent between Desktop Chrome (default), Samsung TV (Tizen), LG TV (webOS), and Mobile Chrome. Luna serves a different layout for each; if the default looks oversized or you get an "unsupported browser" warning, try the TV modes. The choice is saved and the page reloads immediately.
+- **Check for updates** — see Updates below.
+
+## Updates
+
+The app checks GitHub Releases once a day and offers to download and install new versions. You can also check manually from the settings dialog.
+
+- The first time you install an update, Android asks you to allow Luna TV to install apps ("Install unknown apps") — grant it once and it's remembered.
+- **Updating from v1.0.10 or earlier:** releases before the persistent signing key have mismatched signatures, so the in-app update will fail with "App not installed". Uninstall the old version once, sideload the new APK, and sign in again. All updates after that install normally and keep your login.
+
+## Known Limitations
+
+- **Input lag on MediaTek TVs** — some TVs with MediaTek chipsets (common in budget models and some Sony/Philips sets) show noticeable controller-to-screen latency. This is an upstream Chromium/WebView video-decoder issue on those SoCs, not something the app can fix. If your TV is affected, Luna's native apps on a Fire TV Stick or the Luna app in Chrome on another device will perform better.
 
 ## Troubleshooting
 
