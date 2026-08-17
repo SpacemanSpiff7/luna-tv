@@ -1,6 +1,7 @@
 package com.lunatv.app;
 
 import android.annotation.SuppressLint;
+import android.content.SharedPreferences;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -21,6 +22,7 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.webkit.WebSettingsCompat;
 import androidx.webkit.WebViewFeature;
@@ -30,9 +32,34 @@ import java.util.Collections;
 public class MainActivity extends AppCompatActivity {
 
     private static final String LUNA_URL = "https://luna.amazon.com";
-    private static final String DESKTOP_UA =
+
+    static final String PREFS_NAME = "luna_tv";
+    private static final String PREF_UA_MODE = "ua_mode";
+
+    // Display modes: different sites serve different layouts per user-agent.
+    // Desktop Chrome is the default; TV UAs get Luna's living-room layouts,
+    // Mobile is a fallback for TVs that choke on the desktop layout.
+    private static final String[] UA_MODE_NAMES = {
+            "Desktop Chrome (default)",
+            "Samsung TV (Tizen)",
+            "LG TV (webOS)",
+            "Mobile Chrome",
+    };
+    private static final String[] UA_STRINGS = {
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-                    + "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+                    + "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Mozilla/5.0 (SMART-TV; Linux; Tizen 7.0) AppleWebKit/537.36 "
+                    + "(KHTML, like Gecko) 94.0.4606.31/7.0 TV Safari/537.36",
+            "Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.36 "
+                    + "(KHTML, like Gecko) Chrome/108.0.5359.211 Safari/537.36 WebAppManager",
+            "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 "
+                    + "(KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36",
+    };
+    private static final int MODE_MOBILE = 3;
+
+    // CSS layout viewport width forced for desktop/TV modes. TVs report high
+    // densities, which otherwise gives Luna a ~960px viewport and oversized UI.
+    private static final int DESKTOP_VIEWPORT_WIDTH = 1920;
 
     // Spoof the HTML5 Fullscreen API so Luna thinks we're already fullscreen.
     // Without this, Luna prompts the user to "go fullscreen" on every page load.
@@ -53,6 +80,8 @@ public class MainActivity extends AppCompatActivity {
     private LinearLayout errorOverlay;
     private View customView;
     private WebChromeClient.CustomViewCallback customViewCallback;
+    private SharedPreferences prefs;
+    private UpdateChecker updateChecker;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,6 +89,7 @@ public class MainActivity extends AppCompatActivity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         setContentView(R.layout.activity_main);
 
+        prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         rootLayout = findViewById(R.id.root);
         errorOverlay = findViewById(R.id.error_overlay);
         webView = findViewById(R.id.webview);
@@ -73,6 +103,9 @@ public class MainActivity extends AppCompatActivity {
         setupImmersiveMode();
         setupWebView();
         setupCookies();
+
+        updateChecker = new UpdateChecker(this, prefs);
+        updateChecker.checkDaily();
 
         webView.loadUrl(LUNA_URL);
     }
@@ -89,7 +122,8 @@ public class MainActivity extends AppCompatActivity {
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         settings.setOffscreenPreRaster(true);
-        settings.setUserAgentString(DESKTOP_UA);
+
+        applyDisplayMode();
 
         // Remove X-Requested-With header (WebView detection vector)
         if (WebViewFeature.isFeatureSupported(WebViewFeature.REQUESTED_WITH_HEADER_ALLOW_LIST)) {
@@ -102,11 +136,34 @@ public class MainActivity extends AppCompatActivity {
             WebSettingsCompat.setSafeBrowsingEnabled(settings, false);
         }
 
-        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
         webView.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, false);
         webView.setWebViewClient(new LunaWebViewClient());
         webView.setWebChromeClient(new LunaWebChromeClient());
         webView.requestFocus();
+    }
+
+    private int getUaMode() {
+        int mode = prefs.getInt(PREF_UA_MODE, 0);
+        return (mode >= 0 && mode < UA_STRINGS.length) ? mode : 0;
+    }
+
+    // Apply the saved user-agent and matching viewport. Desktop/TV modes force
+    // a 1920px CSS layout viewport regardless of screen density; mobile mode
+    // lets the page's own viewport meta tag govern.
+    private void applyDisplayMode() {
+        int mode = getUaMode();
+        WebSettings settings = webView.getSettings();
+        settings.setUserAgentString(UA_STRINGS[mode]);
+        settings.setUseWideViewPort(true);
+        if (mode == MODE_MOBILE) {
+            settings.setLoadWithOverviewMode(true);
+            webView.setInitialScale(0);
+        } else {
+            settings.setLoadWithOverviewMode(false);
+            int screenWidthPx = getResources().getDisplayMetrics().widthPixels;
+            webView.setInitialScale(Math.max(1,
+                    Math.round(100f * screenWidthPx / DESKTOP_VIEWPORT_WIDTH)));
+        }
     }
 
     @SuppressWarnings("deprecation")
@@ -114,6 +171,44 @@ public class MainActivity extends AppCompatActivity {
         CookieManager cm = CookieManager.getInstance();
         cm.setAcceptCookie(true);
         cm.setAcceptThirdPartyCookies(webView, true);
+    }
+
+    // ── Settings ───────────────────────────────────────────────────────
+
+    private void showSettingsDialog() {
+        if (isFinishing() || isDestroyed()) return;
+        String[] items = {
+                "Display mode: " + UA_MODE_NAMES[getUaMode()],
+                "Check for updates",
+        };
+        new AlertDialog.Builder(this)
+                .setTitle("Luna TV " + BuildConfig.VERSION_NAME)
+                .setItems(items, (dialog, which) -> {
+                    if (which == 0) {
+                        showDisplayModeDialog();
+                    } else {
+                        updateChecker.checkNow();
+                    }
+                })
+                .setOnDismissListener(dialog -> webView.requestFocus())
+                .show();
+    }
+
+    private void showDisplayModeDialog() {
+        if (isFinishing() || isDestroyed()) return;
+        int current = getUaMode();
+        new AlertDialog.Builder(this)
+                .setTitle("Display mode")
+                .setSingleChoiceItems(UA_MODE_NAMES, current, (dialog, which) -> {
+                    dialog.dismiss();
+                    if (which != current) {
+                        prefs.edit().putInt(PREF_UA_MODE, which).apply();
+                        applyDisplayMode();
+                        webView.loadUrl(LUNA_URL);
+                    }
+                })
+                .setOnDismissListener(dialog -> webView.requestFocus())
+                .show();
     }
 
     // ── Immersive Mode ─────────────────────────────────────────────────
@@ -146,11 +241,37 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // ── Back Button (also Xbox B) ──────────────────────────────────────
+    // ── Keys: Back (Xbox B) and Menu ───────────────────────────────────
+    //
+    // Short Back press: exit fullscreen → go back → exit app.
+    // Long Back press (outside fullscreen video): settings dialog.
+    // Menu key (TV remote): settings dialog.
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_MENU) {
+            showSettingsDialog();
+            return true;
+        }
         if (keyCode == KeyEvent.KEYCODE_BACK) {
+            event.startTracking();
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyLongPress(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK && customView == null) {
+            showSettingsDialog();
+            return true;
+        }
+        return super.onKeyLongPress(keyCode, event);
+    }
+
+    @Override
+    public boolean onKeyUp(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK && !event.isCanceled()) {
             if (customView != null) {
                 hideCustomView();
                 return true;
@@ -159,8 +280,10 @@ public class MainActivity extends AppCompatActivity {
                 webView.goBack();
                 return true;
             }
+            finish();
+            return true;
         }
-        return super.onKeyDown(keyCode, event);
+        return super.onKeyUp(keyCode, event);
     }
 
     // ── HTML5 Fullscreen ───────────────────────────────────────────────

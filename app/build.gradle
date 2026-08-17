@@ -12,6 +12,14 @@ android {
         targetSdk 34
         versionCode project.hasProperty('buildNumber') ? project.buildNumber.toInteger() : 1
         versionName project.hasProperty('buildNumber') ? "1.0.${project.buildNumber}" : "1.0.0"
+
+        // Exposed to UpdateChecker for comparison against release tags (v1.0.N)
+        buildConfigField "int", "BUILD_NUMBER",
+                "${project.hasProperty('buildNumber') ? project.buildNumber.toInteger() : 0}"
+    }
+
+    buildFeatures {
+        buildConfig true
     }
 
     buildTypes {
