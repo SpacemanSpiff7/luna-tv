@@ -23,6 +23,21 @@ jobs:
 
       - uses: android-actions/setup-android@v3
 
+      # Without a persistent keystore, every CI run signs with a freshly
+      # generated debug key, so each release has a different signature and
+      # updating over an installed copy fails with "App not installed".
+      - name: Restore persistent debug keystore
+        env:
+          DEBUG_KEYSTORE_B64: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$DEBUG_KEYSTORE_B64" ]; then
+            mkdir -p ~/.android
+            echo "$DEBUG_KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+            echo "Persistent debug keystore restored."
+          else
+            echo "::warning::DEBUG_KEYSTORE_B64 secret not set — APK will be signed with a throwaway key and in-app updates will fail. See README 'Release signing'."
+          fi
+
       - name: Build debug APK
         run: chmod +x gradlew && ./gradlew assembleDebug -PbuildNumber=${{ github.run_number }}
 
