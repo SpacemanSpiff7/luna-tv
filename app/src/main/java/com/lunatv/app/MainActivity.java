@@ -82,6 +82,10 @@ public class MainActivity extends AppCompatActivity {
     private WebChromeClient.CustomViewCallback customViewCallback;
     private SharedPreferences prefs;
     private UpdateChecker updateChecker;
+    private AlertDialog activeDialog;
+    // Set when the display mode changes: the old history was rendered under a
+    // different UA, so drop it once the reloaded page finishes.
+    private boolean clearHistoryOnLoad;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -149,20 +153,22 @@ public class MainActivity extends AppCompatActivity {
 
     // Apply the saved user-agent and matching viewport. Desktop/TV modes force
     // a 1920px CSS layout viewport regardless of screen density; mobile mode
-    // lets the page's own viewport meta tag govern.
+    // lets the page's own viewport meta tag govern. Panels narrower than
+    // 1920px (720p) skip the scale override — squeezing 1920 CSS px into
+    // 1280 physical px would render everything at 2/3 size.
     private void applyDisplayMode() {
         int mode = getUaMode();
         WebSettings settings = webView.getSettings();
         settings.setUserAgentString(UA_STRINGS[mode]);
         settings.setUseWideViewPort(true);
-        if (mode == MODE_MOBILE) {
+        int screenWidthPx = getResources().getDisplayMetrics().widthPixels;
+        if (mode == MODE_MOBILE || screenWidthPx < DESKTOP_VIEWPORT_WIDTH) {
             settings.setLoadWithOverviewMode(true);
             webView.setInitialScale(0);
         } else {
             settings.setLoadWithOverviewMode(false);
-            int screenWidthPx = getResources().getDisplayMetrics().widthPixels;
-            webView.setInitialScale(Math.max(1,
-                    Math.round(100f * screenWidthPx / DESKTOP_VIEWPORT_WIDTH)));
+            webView.setInitialScale(
+                    Math.round(100f * screenWidthPx / DESKTOP_VIEWPORT_WIDTH));
         }
     }
 
@@ -181,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
                 "Display mode: " + UA_MODE_NAMES[getUaMode()],
                 "Check for updates",
         };
-        new AlertDialog.Builder(this)
+        activeDialog = new AlertDialog.Builder(this)
                 .setTitle("Luna TV " + BuildConfig.VERSION_NAME)
                 .setItems(items, (dialog, which) -> {
                     if (which == 0) {
@@ -190,25 +196,32 @@ public class MainActivity extends AppCompatActivity {
                         updateChecker.checkNow();
                     }
                 })
-                .setOnDismissListener(dialog -> webView.requestFocus())
+                .setOnDismissListener(dialog -> refocusWebView())
                 .show();
     }
 
     private void showDisplayModeDialog() {
         if (isFinishing() || isDestroyed()) return;
         int current = getUaMode();
-        new AlertDialog.Builder(this)
+        activeDialog = new AlertDialog.Builder(this)
                 .setTitle("Display mode")
                 .setSingleChoiceItems(UA_MODE_NAMES, current, (dialog, which) -> {
                     dialog.dismiss();
                     if (which != current) {
                         prefs.edit().putInt(PREF_UA_MODE, which).apply();
                         applyDisplayMode();
+                        clearHistoryOnLoad = true;
                         webView.loadUrl(LUNA_URL);
                     }
                 })
-                .setOnDismissListener(dialog -> webView.requestFocus())
+                .setOnDismissListener(dialog -> refocusWebView())
                 .show();
+    }
+
+    private void refocusWebView() {
+        if (!isFinishing() && !isDestroyed()) {
+            webView.requestFocus();
+        }
     }
 
     // ── Immersive Mode ─────────────────────────────────────────────────
@@ -249,7 +262,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_MENU) {
+        if (keyCode == KeyEvent.KEYCODE_MENU && customView == null) {
             showSettingsDialog();
             return true;
         }
@@ -271,7 +284,8 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onKeyUp(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK && !event.isCanceled()) {
+        if (keyCode == KeyEvent.KEYCODE_BACK
+                && event.isTracking() && !event.isCanceled()) {
             if (customView != null) {
                 hideCustomView();
                 return true;
@@ -318,6 +332,9 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onDestroy() {
+        if (activeDialog != null && activeDialog.isShowing()) {
+            activeDialog.dismiss();
+        }
         webView.destroy();
         super.onDestroy();
     }
@@ -333,6 +350,10 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onPageFinished(WebView view, String url) {
+            if (clearHistoryOnLoad) {
+                clearHistoryOnLoad = false;
+                view.clearHistory();
+            }
             errorOverlay.setVisibility(View.GONE);
             webView.setVisibility(View.VISIBLE);
             view.evaluateJavascript(FULLSCREEN_SPOOF_JS, null);

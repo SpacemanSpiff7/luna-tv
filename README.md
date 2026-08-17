@@ -81,7 +81,7 @@ Open the settings dialog with the **Menu key** on your TV remote, or by **holdin
 
 The app checks GitHub Releases once a day and offers to download and install new versions. You can also check manually from the settings dialog.
 
-- The first time you install an update, Android asks you to allow Luna TV to install apps ("Install unknown apps") — grant it once and it's remembered.
+- The first time you update, the app sends you to Android's "Install unknown apps" screen to allow Luna TV to install updates — grant it once and it's remembered. Then check for updates again from the settings dialog.
 - **Updating from v1.0.10 or earlier:** releases before the persistent signing key have mismatched signatures, so the in-app update will fail with "App not installed". Uninstall the old version once, sideload the new APK, and sign in again. All updates after that install normally and keep your login.
 
 ## Known Limitations
